@@ -5,7 +5,7 @@ from database import get_db
 from checkout import checkout_logic
 
 app = FastAPI()
-SRN = "PES1UG2XCS447"
+SRN = "PES1UG23CS447"
 templates = Jinja2Templates(directory="templates")
 
 
@@ -39,7 +39,7 @@ def login_page(request: Request):
     return templates.TemplateResponse("login.html", {"request": request})
 
 
-@app.post("/login", response_class=HTMLResponse)
+@app.post("/login")
 def login(request: Request, username: str = Form(...), password: str = Form(...)):
     db = get_db()
     user = db.execute(
@@ -50,11 +50,10 @@ def login(request: Request, username: str = Form(...), password: str = Form(...)
     if not user:
         return templates.TemplateResponse(
             "login.html",
-            {"request": request, "error": "❌ Invalid username or password", "user": ""}
+            {"request": request, "error": "Invalid username or password", "user": ""}
         )
 
     return RedirectResponse(f"/events?user={username}", status_code=302)
-
 
 
 @app.get("/events", response_class=HTMLResponse)
@@ -62,9 +61,7 @@ def events(request: Request, user: str):
     db = get_db()
     rows = db.execute("SELECT * FROM events").fetchall()
 
-    waste = 0
-    for i in range(3000000):
-        waste += i % 3
+    #  OPTIMIZED: removed artificial CPU waste
 
     return templates.TemplateResponse(
         "events.html",
@@ -75,7 +72,7 @@ def events(request: Request, user: str):
 @app.get("/register_event/{event_id}")
 def register_event(event_id: int, user: str):
     if event_id == 404:
-        1 / 0
+        1 / 0  # keep for monolith failure demo
 
     db = get_db()
     db.execute("INSERT INTO registrations VALUES (?,?)", (user, event_id))
@@ -97,10 +94,7 @@ def my_events(request: Request, user: str):
         (user,)
     ).fetchall()
 
-
-    dummy = 0
-    for _ in range(1500000):
-        dummy += 1
+    # 🔥 OPTIMIZED: removed unnecessary loop
 
     return templates.TemplateResponse(
         "my_events.html",
@@ -115,11 +109,11 @@ def checkout(request: Request):
         "checkout.html",
         {"request": request, "total": total, "user": ""}
     )
+
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    # Try to keep user on UI even when it crashes
     user = request.query_params.get("user", "")
-
     return templates.TemplateResponse(
         "error.html",
         {
